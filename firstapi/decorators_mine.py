@@ -3,9 +3,14 @@ import functools
 
 # 1 problem
 
-p = print
-p = lambda x: print(x.upper())
-p('fdjgfdGSAHFDX')
+def upper_print(func):
+    def wrapper(*args, **kwargs):
+        func(*[i.upper() if type(i) == str else i for i in args], **kwargs)
+    return wrapper
+
+
+print = upper_print(print)
+print('fdjgfdGSAHFDX')
 
 # 2 problem
 
@@ -19,22 +24,23 @@ def decorator_time(func):
         t1 = time()
         if count == 0:
             count += 1
-            func(*args, **kwargs)
+            a = func(*args, **kwargs)
         t2 = time()
         print(t2 - t1)
-
+        return a
     return wrapper
 
 @decorator_time
 def some_func():
     sleep(2)
     print("some_func is done, now you'll see its time")
+    return 0
 
 some_func()
 
 # 3, 4 problem
 
-def check_password(password):
+def check_password():
     global c
     c = 0
     def decorator(func):
@@ -45,7 +51,7 @@ def check_password(password):
                 c += 1
                 print('type password:')
                 p = input()
-                if p == password:
+                if p == correct_password:
                     return func(*args, **kwargs)
                 print('access denied')
                 return None
@@ -53,23 +59,23 @@ def check_password(password):
         return wrapper
     return decorator
 
-@check_password(password="123")
+@check_password()
 def fibonachi(n):
     if n > 2:
         return fibonachi(n-1) + fibonachi(n-2)
     return 1
 
+print('set password for function fibonachi:')
+correct_password = input()
 print(fibonachi(30))
 
 
 # 5 problem
 
 def cached(func):
-    global cache
     cache = {}
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        global cache
         key = tuple(args) + tuple(kwargs)
         if key not in cache:
             cache[key] = func(*args, **kwargs)
@@ -77,10 +83,9 @@ def cached(func):
     return wrapper
 
 @cached
-@check_password(password="1234")
 def fibonachi1(n):
     if n > 2:
-        return fibonachi(n-1) + fibonachi(n-2)
+        return fibonachi1(n-1) + fibonachi1(n-2)
     return 1
 
-print(fibonachi1(30))
+print(fibonachi1(35))
