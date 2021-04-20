@@ -1,5 +1,6 @@
 from flask_restful import reqparse, abort, Resource
 from flask_jwt import *
+from create_db import *
 
 ITEMS = [
     {'name': 'tshirt',
@@ -11,9 +12,12 @@ ITEMS = [
 ]
 
 
-def if_shop_exist(name, mes, f):
-    print((name in [i['name'] for i in ITEMS]) == f)
-    if (name in [i['name'] for i in ITEMS]) == f:
+def if_item_exist(name, mes, f):
+    con = sqlite3.connect('data.db')
+    cur = con.cursor()
+    row = list(cur.execute('SELECT name FROM items'))
+    con.close()
+    if ((name, ) in row) == f:
         abort(404, message=mes)
 
 
@@ -23,28 +27,40 @@ class Item(Resource):
 
     @jwt_required()
     def get(self, name):
-        if_shop_exist(name, "Item {} doesn't exist".format(name), False)
-        return list(filter(lambda x: x['name'] == name, ITEMS))
+        if_item_exist(name, "Item {} doesn't exist".format(name), False)
+        con = sqlite3.connect('data.db')
+        cur = con.cursor()
+        return list(cur.execute('SELECT * FROM items WHERE name=?', (name, )))
 
     def post(self, name):
         args = Item.parser.parse_args()
-        if_shop_exist(name, "Item {} already exist".format(name), True)
-        ITEMS.append({'name': name, 'price': args['price']})
-        return ITEMS[-1], 201
+        if_item_exist(name, "Item {} already exist".format(name), True)
+        con = sqlite3.connect('data.db')
+        cur = con.cursor()
+        cur.execute('INSERT INTO items VALUES (NULL, ?, ?)', (name, args['price'], ))
+        for row in cur.execute('SELECT * FROM items WHERE name=?', (name, )):
+            print(row)
+        con.commit()
+        return {'name': name, 'price': args['price']}, 201
 
     def delete(self, name):
-        if_shop_exist(name, "Item {} doesn't exist".format(name), False)
-        del ITEMS[[i['name'] for i in ITEMS].index(name)]
+        if_item_exist(name, "Item {} doesn't exist".format(name), False)
+        con = sqlite3.connect('data.db')
+        cur = con.cursor()
+        cur.execute('DELETE FROM items WHERE name=?', (name, ))
+        con.commit()
         return '', 204
 
     def put(self, name):
         args = Item.parser.parse_args()
-        i = [i['name'] for i in ITEMS]
-        if name not in i:
-            ITEMS.append({'name': name, 'price': args['price']})
-            return ITEMS[-1], 201
-        ITEMS[i.index(name)]['price'] = args['price']
-        return ITEMS[i.index(name)]['price'], 201
+        con = sqlite3.connect('data.db')
+        cur = con.cursor()
+        if (name, ) not in list(cur.execute('SELECT name FROM items')):
+            cur.execute('INSERT INTO items VALUES (NULL, ?, ?)', (name, args['price'],))
+            return {'name': name, 'price': args['price']}, 201
+        cur.execute('UPDATE items SET price=? WHERE name=?', (args['price'], name, ))
+        con.commit()
+        return args['price'], 201
 
 
 class ItemList(Resource):
@@ -53,11 +69,24 @@ class ItemList(Resource):
     # parser.add_argument('items', type=dict, method=append) - можно поменять
 
     def get(self):
-        return ITEMS, 201
+        con = sqlite3.connect('data.db')
+        cur = con.cursor()
+        return list(cur.execute('SELECT * FROM items')), 201
 
     def post(self):
         args = ItemList.parser.parse_args()
+        a = []
+        con = sqlite3.connect('data.db')
+        cur = con.cursor()
+        row = list(cur.execute('SELECT name FROM items'))
+        already_exists = []
         for item in args['items']:
-            if_shop_exist(item['name'], "Item {} already exist".format(item['name']), True)
-            ITEMS.append({'name': item['name'], 'price': item['price']})
-        return ITEMS[len(ITEMS) - len(args['items']):], 201
+            if (item['name'],) in row:
+                already_exists.append(item['name'])
+            else:
+                a.append((item['name'], item['price'],))
+        cur.executemany('INSERT INTO items VALUES (NULL, ?, ?)', a)
+        con.commit()
+        if already_exists != []:
+            abort(404, message=f"Items {', '.join(already_exists)} already exist")
+        return a, 201

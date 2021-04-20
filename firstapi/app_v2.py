@@ -3,6 +3,7 @@ from flask_restful import Api
 from flask_jwt import *
 from security import authenticate, identity
 from items import Item, ItemList
+from Users import UserRegister
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'super-secret' # формальность, которой мы не пользуемся
@@ -12,6 +13,7 @@ jwt = JWT(app, authenticate, identity)
 
 api.add_resource(ItemList, '/items')
 api.add_resource(Item, '/items/<name>')
+api.add_resource(UserRegister, '/register')
 
 
 if __name__ == '__main__':
