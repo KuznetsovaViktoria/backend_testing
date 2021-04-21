@@ -58,4 +58,5 @@ class UserRegister(Resource):
             abort(404, message=f"User {username} already exists")
         cur.execute(UserRegister.create_user, (username, password, ))
         con.commit()
+        con.close()
         return args

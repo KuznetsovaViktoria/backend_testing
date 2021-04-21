@@ -12,3 +12,4 @@ cur.execute(create_table_items)
 
 
 con.commit()
+con.close()

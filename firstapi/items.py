@@ -2,15 +2,6 @@ from flask_restful import reqparse, abort, Resource
 from flask_jwt import *
 from create_db import *
 
-ITEMS = [
-    {'name': 'tshirt',
-     'price': 10},
-    {
-     'name': 'shorts',
-     'price': 5
-    }
-]
-
 
 def if_item_exist(name, mes, f):
     con = sqlite3.connect('data.db')
@@ -30,7 +21,9 @@ class Item(Resource):
         if_item_exist(name, "Item {} doesn't exist".format(name), False)
         con = sqlite3.connect('data.db')
         cur = con.cursor()
-        return list(cur.execute('SELECT * FROM items WHERE name=?', (name, )))
+        item = list(cur.execute('SELECT * FROM items WHERE name=?', (name, )))
+        con.close()
+        return item, 201
 
     def post(self, name):
         args = Item.parser.parse_args()
@@ -41,6 +34,7 @@ class Item(Resource):
         for row in cur.execute('SELECT * FROM items WHERE name=?', (name, )):
             print(row)
         con.commit()
+        con.close()
         return {'name': name, 'price': args['price']}, 201
 
     def delete(self, name):
@@ -49,6 +43,7 @@ class Item(Resource):
         cur = con.cursor()
         cur.execute('DELETE FROM items WHERE name=?', (name, ))
         con.commit()
+        con.close()
         return '', 204
 
     def put(self, name):
@@ -60,6 +55,7 @@ class Item(Resource):
             return {'name': name, 'price': args['price']}, 201
         cur.execute('UPDATE items SET price=? WHERE name=?', (args['price'], name, ))
         con.commit()
+        con.close()
         return args['price'], 201
 
 
@@ -71,7 +67,9 @@ class ItemList(Resource):
     def get(self):
         con = sqlite3.connect('data.db')
         cur = con.cursor()
-        return list(cur.execute('SELECT * FROM items')), 201
+        items = list(cur.execute('SELECT * FROM items'))
+        con.close()
+        return items, 201
 
     def post(self):
         args = ItemList.parser.parse_args()
@@ -89,4 +87,5 @@ class ItemList(Resource):
         con.commit()
         if already_exists != []:
             abort(404, message=f"Items {', '.join(already_exists)} already exist")
+        con.close()
         return a, 201
