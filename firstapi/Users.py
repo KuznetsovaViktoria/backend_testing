@@ -53,8 +53,7 @@ class UserRegister(Resource):
         password = args['password']
         con = sqlite3.connect('data.db')
         cur = con.cursor()
-        row = cur.execute(UserRegister.user_existance, (username, )).fetchone()
-        if row:
+        if User.find_by_username(username):
             abort(404, message=f"User {username} already exists")
         cur.execute(UserRegister.create_user, (username, password, ))
         con.commit()
