@@ -1,13 +1,21 @@
+"""I have created new branch for v4"""
+
 from flask import Flask
 from flask_restful import Api
 from flask_jwt import *
 from security import authenticate, identity
-from items import Item, ItemList
-from Users import UserRegister
+from resources.items import Item, ItemList
+from resources.users import UserRegister
+from db import db
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'super-secret' # формальность, которой мы не пользуемся
+app.config['SECRET_KEY'] = 'super-secret'
 api = Api(app)
+
+db.init_app(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+
 
 jwt = JWT(app, authenticate, identity)
 
